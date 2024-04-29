@@ -13,6 +13,7 @@ import os
 def generate_launch_description():
     pkg_share = launch_ros.substitutions.FindPackageShare(package='arceus_description').find('arceus_description')
     default_model_path = os.path.join(pkg_share, 'src/urdf/arceus_description.urdf')
+    control_share = launch_ros.substitutions.FindPackageShare(package='arceus_control').find('arceus_control')
 
     robot_state_publisher_node = launch_ros.actions.Node(
         package='robot_state_publisher',
@@ -49,12 +50,23 @@ def generate_launch_description():
         )
     )
 
+    robot_localization_node = Node(
+       package='robot_localization',
+       executable='ekf_node',
+       name='ekf_filter_node',
+       output='screen',
+       parameters=[os.path.join(control_share, 'config/ekf.yaml'), {'use_sim_time': LaunchConfiguration('use_sim_time')}]
+    )
+
     return launch.LaunchDescription([
+        launch.actions.DeclareLaunchArgument(name='use_sim_time', default_value='True',
+                                            description='Flag to enable use_sim_time'),
         launch.actions.DeclareLaunchArgument(name='model', default_value=default_model_path,
                                             description='Absolute path to robot urdf file'),
         launch.actions.ExecuteProcess(cmd=['gazebo', '--verbose', '-s', 'libgazebo_ros_init.so', '-s', 'libgazebo_ros_factory.so'], output='screen'),                                            
         robot_state_publisher_node,                                                                                                                  
         spawn_entity,                          
         joint_state_broadcaster_event_handler,
+        robot_localization_node,
         omni_base_controller_event_handler
     ])
