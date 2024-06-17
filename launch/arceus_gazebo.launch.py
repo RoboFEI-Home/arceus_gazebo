@@ -11,9 +11,11 @@ import launch_ros
 import os
 
 def generate_launch_description():
-    pkg_share = launch_ros.substitutions.FindPackageShare(package='arceus_description').find('arceus_description')
-    default_model_path = os.path.join(pkg_share, 'src/urdf/arceus_description.urdf')
+    pkg_share = description_share = launch_ros.substitutions.FindPackageShare(package='arceus_gazebo').find('arceus_gazebo')
+    description_share = launch_ros.substitutions.FindPackageShare(package='arceus_description').find('arceus_description')
+    default_model_path = os.path.join(description_share, 'src/urdf/arceus_description.urdf')
     control_share = launch_ros.substitutions.FindPackageShare(package='arceus_control').find('arceus_control')
+    default_rviz_config_path = os.path.join(description_share, 'rviz/urdf_config.rviz')
 
     robot_state_publisher_node = launch_ros.actions.Node(
         package='robot_state_publisher',
@@ -58,15 +60,26 @@ def generate_launch_description():
        parameters=[os.path.join(control_share, 'config/ekf.yaml'), {'use_sim_time': LaunchConfiguration('use_sim_time')}]
     )
 
+    rviz_node = launch_ros.actions.Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        output='screen',
+        arguments=['-d', LaunchConfiguration('rvizconfig')],
+    )
+
     return launch.LaunchDescription([
         launch.actions.DeclareLaunchArgument(name='use_sim_time', default_value='True',
                                             description='Flag to enable use_sim_time'),
         launch.actions.DeclareLaunchArgument(name='model', default_value=default_model_path,
                                             description='Absolute path to robot urdf file'),
-        launch.actions.ExecuteProcess(cmd=['gazebo', '--verbose', '-s', 'libgazebo_ros_init.so', '-s', 'libgazebo_ros_factory.so'], output='screen'),                                            
+        launch.actions.ExecuteProcess(cmd=['gazebo', '--verbose', '-s', 'libgazebo_ros_init.so', '-s', 'libgazebo_ros_factory.so'], output='screen'),                            
+        launch.actions.DeclareLaunchArgument(name='rvizconfig', default_value=default_rviz_config_path,
+                                            description='Absolute path to rviz config file'),                
         robot_state_publisher_node,                                                                                                                  
         spawn_entity,                          
         joint_state_broadcaster_event_handler,
         robot_localization_node,
-        omni_base_controller_event_handler
+        omni_base_controller_event_handler,
+        rviz_node
     ])
