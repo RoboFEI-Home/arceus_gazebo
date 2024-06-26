@@ -5,7 +5,7 @@ from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument, ExecuteProcess,\
                            IncludeLaunchDescription, RegisterEventHandler
 from launch.conditions import IfCondition
-from launch.event_handlers import OnProcessExit
+from launch.event_handlers import OnProcessExit, OnProcessStart
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 import launch_ros
 import os
@@ -68,6 +68,20 @@ def generate_launch_description():
         arguments=['-d', LaunchConfiguration('rvizconfig')],
     )
 
+    robot_localization_node_event_handler = RegisterEventHandler(
+        event_handler=OnProcessStart(
+            target_action=joint_state_broadcaster_spawner,
+            on_start=[robot_localization_node]
+        )
+    )
+
+    rviz_node_event_handler = RegisterEventHandler(
+        event_handler=OnProcessStart(
+            target_action=robot_localization_node,
+            on_start=[rviz_node]
+        )
+    )
+
     return launch.LaunchDescription([
         launch.actions.DeclareLaunchArgument(name='use_sim_time', default_value='True',
                                             description='Flag to enable use_sim_time'),
@@ -81,7 +95,7 @@ def generate_launch_description():
         robot_state_publisher_node,                                                                                                                  
         spawn_entity,                          
         joint_state_broadcaster_event_handler,
-        robot_localization_node,
+        robot_localization_node_event_handler,
         omni_base_controller_event_handler,
-        rviz_node
+        rviz_node_event_handler
     ])
